@@ -1,5 +1,5 @@
 -- Lua/C submodule
-local libs3 = require('s3_cfunctions')
+local libs3 = require('s3.cfunctions')
 local fio = require('fio')
 local digest = require('digest')
 local log = require('log')
