@@ -30,9 +30,6 @@ Amazon s3 bindings for tarantool
 %cmake . -DCMAKE_BUILD_TYPE=RelWithDebInfo
 make %{?_smp_mflags}
 
-%check
-make %{?_smp_mflags} check
-
 %install
 %make_install
 
