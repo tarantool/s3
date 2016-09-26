@@ -15,7 +15,7 @@ include_directories(${TARANTOOL_INCLUDE_DIRS})
 
 # Find MsgPuck llibrary
 set(MsgPuck_FIND_REQUIRED ON)
-find_package(MsgPuck)
+#find_package(MsgPuck)
 include_directories(${MSGPUCK_INCLUDE_DIRS})
 
 # Find other dependecies
@@ -26,7 +26,7 @@ set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -Wall -Wextra")
 # Set CXXFLAGS
 # set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall -Wextra")
-execute_process ( COMMAND make WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/third_party/libs3 )
+execute_process ( COMMAND env BUILD=${CMAKE_BINARY_DIR}/third_party/libs3 make WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/third_party/libs3 )
 
 # Build module
 add_subdirectory(s3)

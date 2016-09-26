@@ -2,9 +2,9 @@ if (APPLE)
     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -undefined suppress -flat_namespace")
 endif(APPLE)
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../third_party/libs3/build/include)
+include_directories(${CMAKE_BINARY_DIR}/third_party/libs3/include)
 add_library(cfunctions SHARED cfunctions.c)
-target_link_libraries(cfunctions ${MSGPUCK_LIBRARIES} ${CMAKE_CURRENT_BINARY_DIR}/../third_party/libs3/build/lib/libs3.a -lcurl -lxml2 -lpthread -lssl -lcrypto )
+target_link_libraries(cfunctions ${MSGPUCK_LIBRARIES} ${CMAKE_BINARY_DIR}/third_party/libs3/lib/libs3.a -lcurl -lxml2 -lpthread -lssl -lcrypto )
 set_target_properties(cfunctions PROPERTIES PREFIX "" OUTPUT_NAME "cfunctions")
 
 # Install module
