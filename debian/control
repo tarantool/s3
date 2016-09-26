@@ -7,6 +7,9 @@ Build-Depends: debhelper (>= 9), cdbs,
                cmake (>= 2.8),
                tarantool-dev (>= 1.6.8.0),
                libmsgpuck-dev (>= 1.0.0),
+               libxml2-dev,
+               libcurl-dev,
+               libssl-dev,
 # For /usr/bin/prove
                perl (>= 5.10.0)
 Standards-Version: 3.9.6
