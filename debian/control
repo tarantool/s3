@@ -1,0 +1,22 @@
+Source: tarantool-s3
+Priority: optional
+Section: database
+Maintainer: Andrey Drozdov <andrey@tarantool.org>
+# cmake, tarantool-dev, libmsgpuck-dev are only needed for Lua/C and C modules
+Build-Depends: debhelper (>= 9), cdbs,
+               cmake (>= 2.8),
+               tarantool-dev (>= 1.6.8.0),
+               libmsgpuck-dev (>= 1.0.0),
+# For /usr/bin/prove
+               perl (>= 5.10.0)
+Standards-Version: 3.9.6
+Homepage: https://github.com/tarantool/s3
+Vcs-Git: git://github.com/tarantool/s3.git
+Vcs-Browser: https://github.com/tarantool/s3
+
+Package: tarantool-s3
+Architecture: i386 amd64 armhf arm64
+Depends: tarantool (>= 1.6.8.0), ${shlibs:Depends}, ${misc:Depends}
+Pre-Depends: ${misc:Pre-Depends}
+Description: Amazon s3 tarantool bindings
+ Amazon s3 tarantool bindigs.

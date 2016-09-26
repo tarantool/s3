@@ -1,0 +1,5 @@
+tarantool-s3 (0.9.0-1) unstable; urgency=low
+
+  * Initial release
+
+ -- Andrey Drozdov <andrey@tarantool.org>  Mon, 26 Sep 2016 11:30:00 +0300
