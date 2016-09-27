@@ -2,6 +2,7 @@
 local libs3 = require('s3.cfunctions')
 local fio = require('fio')
 local digest = require('digest')
+local crypto = require('crypto')
 local log = require('log')
 local CHUNK_SIZE = 1024 * 10
 
@@ -22,27 +23,35 @@ local s3 = {
             if fio.stat(filename) == nil then
                 return false
             end
-            local file = self.readfile(filename)
 
-            -- required by s3: base64(binary md5) and sha256 hex
-            local md5 = digest.base64_encode(digest.md5(file))
-            local sha256 = digest.sha256_hex(file)
+            local md5, sha256 = self.get_hash(filename)
             local hash = md5 .. ":" .. sha256
             return libs3.put(bucket, key, filename, hash) == 0
         end
     end,
-    readfile = function(filename)
-        local result = ''
+    get_hash = function(filename)
         local file = fio.open(filename, {'O_RDONLY'})
+        local md5_worker = crypto.digest.md5:new()
+        local sha256_worker = crypto.digest.sha256:new()
 
-        -- FIXME: this is naive way for large files
+	function tohex(str)
+	    return (str:gsub('.', function (c)
+		return string.format('%02x', string.byte(c))
+	    end))
+	end
+
         local data = file:read(CHUNK_SIZE)
         while data ~= '' do
-            result = result .. data
+            md5_worker:update(data)
+            sha256_worker:update(data)
             data = file:read(CHUNK_SIZE)
         end
         file:close()
-	return result
+
+        -- required by s3: base64(binary md5) and sha256 hex
+        local md5 = digest.base64_encode(md5_worker:result())
+        local sha256 = tohex(sha256_worker:result())
+	return md5, sha256
     end,
 }
 return s3
