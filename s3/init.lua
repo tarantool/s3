@@ -18,6 +18,13 @@ local s3 = {
             return fio.stat(filename) ~= nil
         end
 
+        self.list = function(self, bucket)
+            if bucket == nil then
+                return libs3.list_service()
+            end
+            return libs3.list_bucket(bucket)
+        end
+
         -- libs3.put wrapper
 	self.upload_file = function(self, bucket, key, filename)
             if fio.stat(filename) == nil then

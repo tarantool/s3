@@ -878,6 +878,171 @@ upload:
     return 0;
 }
 
+typedef struct list_service_data
+{
+	int headerPrinted;
+	int allDetails;
+} list_service_data;
+
+char *slist_cb_buckets[1024];
+char *slist_cb_time[256];
+int slist_cb_len = 0;
+
+static S3Status listServiceCallback(const char *ownerId,
+                                    const char *ownerDisplayName,
+                                    const char *bucketName,
+                                    int64_t creationDate, void *callbackData)
+{
+	char timebuf[256];
+	if (creationDate >= 0) {
+		time_t t = (time_t) creationDate;
+		strftime(timebuf, sizeof(timebuf), "%Y-%m-%dT%H:%M:%SZ", gmtime(&t));
+	}
+	else {
+		timebuf[0] = 0;
+	}
+
+	slist_cb_buckets[slist_cb_len] = malloc(sizeof(char) * 1024);
+	slist_cb_time[slist_cb_len] = malloc(sizeof(char) * 256);
+	sprintf(slist_cb_buckets[slist_cb_len], "%s", bucketName);
+	sprintf(slist_cb_time[slist_cb_len], "%s", timebuf);
+	slist_cb_len++;
+	return S3StatusOK;
+}
+
+
+static int list_service(int allDetails)
+{
+	list_service_data data;
+	data.headerPrinted = 0;
+	data.allDetails = allDetails;
+
+	S3_init();
+	S3ListServiceHandler listServiceHandler =
+	{
+		{ &responsePropertiesCallback, &responseCompleteCallback },
+		&listServiceCallback
+	};
+	do {
+		S3_list_service(
+			protocolG, accessKeyIdG, secretAccessKeyG,
+			0, 0, 0, &listServiceHandler, &data
+		);
+	} while (S3_status_is_retryable(statusG) && should_retry());
+
+    if (statusG != S3StatusOK) {
+	return 1;
+    }
+    S3_deinitialize();
+    return 0;
+}
+
+typedef struct list_bucket_callback_data
+{
+	int isTruncated;
+	char nextMarker[1024];
+	int keyCount;
+	int allDetails;
+} list_bucket_callback_data;
+
+char *blist_cb_buckets[1024];
+char *blist_cb_time[256];
+long blist_cb_size[1024];
+int blist_cb_len = 0;
+
+static S3Status listBucketCallback(int isTruncated, const char *nextMarker,
+                                   int contentsCount,
+                                   const S3ListBucketContent *contents,
+                                   int commonPrefixesCount,
+                                   const char **commonPrefixes,
+                                   void *callbackData)
+{
+	list_bucket_callback_data *data =
+		(list_bucket_callback_data *) callbackData;
+	int i;
+
+	data->isTruncated = isTruncated;
+	if ((!nextMarker || !nextMarker[0]) && contentsCount) {
+		nextMarker = contents[contentsCount - 1].key;
+	}
+	if (nextMarker) {
+		snprintf(data->nextMarker, sizeof(data->nextMarker), "%s",
+			nextMarker);
+	}
+	else {
+		data->nextMarker[0] = 0;
+	}
+
+	for (i = 0; i < contentsCount; i++) {
+	const S3ListBucketContent *content = &(contents[i]);
+	char timebuf[256];
+		time_t t = (time_t) content->lastModified;
+		strftime(timebuf, sizeof(timebuf), "%Y-%m-%dT%H:%M:%SZ",
+			gmtime(&t));
+
+		blist_cb_buckets[blist_cb_len] = malloc(sizeof(char) * 1024);
+		blist_cb_time[blist_cb_len] = malloc(sizeof(char) * 256);
+
+		sprintf(blist_cb_buckets[blist_cb_len], "%s", content->key);
+		sprintf(blist_cb_time[blist_cb_len], "%s", timebuf);
+		blist_cb_size[blist_cb_len] = content->size;
+
+		blist_cb_len++;
+	}
+	data->keyCount += contentsCount;
+	return S3StatusOK;
+}
+
+static int list_bucket(const char *bucketName, const char *prefix,
+                        const char *marker, const char *delimiter,
+                        int maxkeys, int allDetails)
+{
+	S3_init();
+	S3BucketContext bucketContext =
+	{
+		0,
+		bucketName,
+		protocolG,
+		uriStyleG,
+		accessKeyIdG,
+		secretAccessKeyG,
+		0
+	};
+
+	S3ListBucketHandler listBucketHandler =
+	{
+		{ &responsePropertiesCallback, &responseCompleteCallback },
+		&listBucketCallback
+	};
+	list_bucket_callback_data data;
+
+	if (marker) {
+		snprintf(data.nextMarker, sizeof(data.nextMarker), "%s", marker);
+	}
+	else {
+		data.nextMarker[0] = 0;
+	}
+	data.keyCount = 0;
+	data.allDetails = allDetails;
+
+	do {
+		data.isTruncated = 0;
+		do {
+			S3_list_bucket(&bucketContext, prefix, data.nextMarker,
+				delimiter, maxkeys, 0, &listBucketHandler, &data);
+		} while (S3_status_is_retryable(statusG) && should_retry());
+		if (statusG != S3StatusOK) {
+			break;
+		}
+	} while (data.isTruncated && (!maxkeys || (data.keyCount < maxkeys)));
+
+	if (statusG != S3StatusOK) {
+		return 1;
+	}
+	S3_deinitialize();
+	return 0;
+}
+
 static int
 init(struct lua_State *L)
 {
@@ -891,7 +1056,8 @@ init(struct lua_State *L)
 	return 0;
 }
 
-static ssize_t get_s3(va_list ap){
+static ssize_t
+get_s3(va_list ap){
 	const char *bucket = va_arg(ap, char*);
 	const char *key = va_arg(ap, char*);
 	const char *filename = va_arg(ap, char*);
@@ -912,7 +1078,8 @@ get(struct lua_State *L){
 	return 1;
 }
 
-static ssize_t put_s3(va_list ap){
+static ssize_t
+put_s3(va_list ap){
 	const char *bucket = va_arg(ap, char*);
 	const char *key = va_arg(ap, char*);
 	const char *filename = va_arg(ap, char*);
@@ -935,6 +1102,59 @@ put(struct lua_State *L){
 	return 1;
 }
 
+
+static int
+lua_list_bucket(struct lua_State *L){
+	if (lua_gettop(L) < 1)
+		luaL_error(L, "Usage: libs3.list_bicket(bucket_name)");
+	const char *bucket = lua_tostring(L, 1);
+	blist_cb_len = 0;
+	if(list_bucket(bucket, 0, 0, 0, 0, 0)){
+		return 0;
+	}
+	int i;
+	lua_createtable(L, blist_cb_len, 0);
+        for(i = 0;i < blist_cb_len;i++){
+		/* Create nested table {name=..., date=..., size=...}*/
+		lua_createtable(L, 4, 0);
+
+		lua_pushstring(L, blist_cb_buckets[i]);
+		lua_setfield(L, -2, "name");
+
+		lua_pushstring(L, blist_cb_time[i]);
+		lua_setfield(L, -2, "date");
+
+		lua_pushinteger(L, blist_cb_size[i]);
+		lua_setfield(L, -2, "size");
+
+		lua_rawseti(L, -2, i+1);
+	}
+	return 1;
+}
+
+static int
+lua_list_service(struct lua_State *L){
+	slist_cb_len = 0;
+        if(list_service(0)){
+		return 0;
+	}
+	int i;
+	lua_createtable(L, slist_cb_len, 0);
+        for(i = 0;i < slist_cb_len;i++){
+		/* Create nested table {name=..., date=...}*/
+		lua_createtable(L, 2, 0);
+
+		lua_pushstring(L, slist_cb_buckets[i]);
+		lua_setfield(L, -2, "name");
+
+		lua_pushstring(L, slist_cb_time[i]);
+		lua_setfield(L, -2, "date");
+
+		lua_rawseti(L, -2, i+1);
+	}
+	return 1;
+}
+
 LUA_API int
 luaopen_s3_cfunctions(lua_State *L)
 {
@@ -944,6 +1164,8 @@ luaopen_s3_cfunctions(lua_State *L)
 		{"init", init},
 		{"get", get},
 		{"put", put},
+		{"list_service", lua_list_service},
+		{"list_bucket", lua_list_bucket},
 		{NULL, NULL}
 	};
 	luaL_register(L, NULL, meta);
