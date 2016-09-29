@@ -617,6 +617,7 @@ static int try_get_parts_info(const char *bucketName, const char *key,
 
     if (statusG == S3StatusOK) {
         if (!data.partsCount) {
+	    fprintf(stderr, "partsCount = 0\n");
 	    return 1;
         }
     }
@@ -648,17 +649,6 @@ static int putObjectDataCallback(int bufferSize, char *buffer,
 
     data->contentLength -= ret;
     data->totalContentLength -= ret;
-
-    if (data->contentLength && !data->noStatus) {
-        // Avoid a weird bug in MingW, which won't print the second integer
-        // value properly when it's in the same call, so print separately
-        printf("%llu bytes remaining ", 
-               (unsigned long long) data->totalContentLength);
-        printf("(%d%% complete) ...\n",
-               (int) (((data->totalOriginalContentLength - 
-                        data->totalContentLength) * 100) /
-                      data->totalOriginalContentLength));
-    }
 
     return ret;
 }
@@ -756,6 +746,7 @@ static int put_object(const char *bucketName, const char *key, const char *filen
         }
 
         if (statusG != S3StatusOK) {
+            fprintf(stderr, "Bad status\n");
             return 1;
         }
         else if (data.contentLength) {
@@ -900,6 +891,13 @@ init(struct lua_State *L)
 	return 0;
 }
 
+static ssize_t get_s3(va_list ap){
+	const char *bucket = va_arg(ap, char*);
+	const char *key = va_arg(ap, char*);
+	const char *filename = va_arg(ap, char*);
+	return get_object(bucket, key, filename);
+}
+
 static int
 get(struct lua_State *L){
 	if (lua_gettop(L) < 3)
@@ -908,10 +906,18 @@ get(struct lua_State *L){
 	const char *key = lua_tostring(L, 2);
 	const char *filename = lua_tostring(L, 3);
 
-	lua_pushinteger(L, get_object(
-		bucket, key, filename
+	lua_pushinteger(L, coio_call(
+		get_s3, bucket, key, filename
 	));
 	return 1;
+}
+
+static ssize_t put_s3(va_list ap){
+	const char *bucket = va_arg(ap, char*);
+	const char *key = va_arg(ap, char*);
+	const char *filename = va_arg(ap, char*);
+	const char *hash = va_arg(ap, char*);
+	return put_object(bucket, key, filename, hash);
 }
 
 static int
@@ -923,8 +929,8 @@ put(struct lua_State *L){
 	const char *filename = lua_tostring(L, 3);
 	const char *hash = lua_tostring(L, 4);
 
-	lua_pushinteger(L, put_object(
-		bucket, key, filename, hash
+	lua_pushinteger(L, coio_call(
+		put_s3, bucket, key, filename, hash
 	));
 	return 1;
 }
