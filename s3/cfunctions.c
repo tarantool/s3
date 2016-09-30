@@ -1102,16 +1102,8 @@ put(struct lua_State *L){
 	return 1;
 }
 
-
 static int
-lua_list_bucket(struct lua_State *L){
-	if (lua_gettop(L) < 1)
-		luaL_error(L, "Usage: libs3.list_bicket(bucket_name)");
-	const char *bucket = lua_tostring(L, 1);
-	blist_cb_len = 0;
-	if(list_bucket(bucket, 0, 0, 0, 0, 0)){
-		return 0;
-	}
+lua_list_bucket_success(struct lua_State *L){
 	int i;
 	lua_createtable(L, blist_cb_len, 0);
         for(i = 0;i < blist_cb_len;i++){
@@ -1130,6 +1122,31 @@ lua_list_bucket(struct lua_State *L){
 		lua_rawseti(L, -2, i+1);
 	}
 	return 1;
+}
+
+static int
+lua_list_bucket(struct lua_State *L){
+	if (lua_gettop(L) < 1)
+		luaL_error(L, "Usage: libs3.list_bucket(bucket_name)");
+	const char *bucket = lua_tostring(L, 1);
+	blist_cb_len = 0;
+	if(list_bucket(bucket, 0, 0, 0, 0, 0)){
+		return 0;
+	}
+        return lua_list_bucket_success(L);
+}
+
+static int
+lua_list_bucket_prefix(struct lua_State *L){
+	if (lua_gettop(L) < 2)
+		luaL_error(L, "Usage: libs3.list_bucket_prefix(bucket_name, prefix)");
+	const char *bucket = lua_tostring(L, 1);
+	const char *prefix = lua_tostring(L, 2);
+	blist_cb_len = 0;
+	if(list_bucket(bucket, prefix, 0, 0, 0, 0)){
+		return 0;
+	}
+        return lua_list_bucket_success(L);
 }
 
 static int
@@ -1158,7 +1175,7 @@ lua_list_service(struct lua_State *L){
 LUA_API int
 luaopen_s3_cfunctions(lua_State *L)
 {
-	/* result is returned from require('modulekit.cfunctions') */
+	/* result is returned from require('s3.cfunctions') */
 	lua_newtable(L);
 	static const struct luaL_reg meta [] = {
 		{"init", init},
@@ -1166,6 +1183,7 @@ luaopen_s3_cfunctions(lua_State *L)
 		{"put", put},
 		{"list_service", lua_list_service},
 		{"list_bucket", lua_list_bucket},
+		{"list_bucket_prefix", lua_list_bucket_prefix},
 		{NULL, NULL}
 	};
 	luaL_register(L, NULL, meta);

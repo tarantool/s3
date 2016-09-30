@@ -32,9 +32,12 @@ local s3 = {
             return fio.stat(filename) ~= nil
         end
 
-        self.list = function(self, bucket)
+        self.list = function(self, bucket, prefix)
             if bucket == nil then
                 return libs3.list_service()
+            end
+            if prefix ~= nil and type(prefix) == 'string' then
+                return libs3.list_bucket_prefix(bucket, prefix)
             end
             return libs3.list_bucket(bucket)
         end
