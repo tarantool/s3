@@ -2,7 +2,7 @@
 Amazon S3 backup plugin. Use this plugin to put/get files into amazon s3 storage
 
 ### API
-* init(access_key, secret_key, region_name, host)
+* init(opts) (`access` - access key, `secret` - secret key, `region` - amazon region name, `host` - hostname)
 * download_file(bucket_name, key, filename)
 * upload_file(bucket_name, key, filename)
 * list(bucket: optional) - list bucket or service
@@ -12,12 +12,12 @@ Amazon S3 backup plugin. Use this plugin to put/get files into amazon s3 storage
 s3 = require('s3')
 
 -- set credentals, region name and server
-s3:init(
-    'my_access_key', 
-    'my_secret_key',
-    'us-east-1',
-    'hostname.com'
-)
+s3:init({
+    access='my_access_key',
+    secret='my_secret_key',
+    region='us-east-1',
+    host='hostname.com'
+})
 
 -- download file to current directory from s3 storage
 if s3:download_file('files', 'file.txt', 'cloud_file.txt') then

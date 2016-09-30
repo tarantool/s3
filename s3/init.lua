@@ -7,8 +7,22 @@ local log = require('log')
 local CHUNK_SIZE = 1024 * 10
 
 local s3 = {
-    init = function(self, access_key, secret_key, region, host)
-        libs3.init(access_key, secret_key, region, host)
+    options = {'access', 'secret', 'region', 'host'},
+    valid_opts = function(self, opts)
+        local is_valid = true
+        for _, k in pairs(self.options) do
+            if opts[k] == nil or type(opts[k]) ~= 'string' then
+                is_valid = false
+            end
+        end
+        return is_valid
+    end,
+
+    init = function(self, opts) --access_key, secret_key, region, host)
+        if not self:valid_opts(opts) then
+            return false
+        end
+        libs3.init(opts.access, opts.secret, opts.region, opts.host)
 
         -- libs3.get wrapper
         self.download_file = function(self, bucket, key, filename)
