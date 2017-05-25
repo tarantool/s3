@@ -1177,7 +1177,7 @@ luaopen_s3_cfunctions(lua_State *L)
 {
 	/* result is returned from require('s3.cfunctions') */
 	lua_newtable(L);
-	static const struct luaL_reg meta [] = {
+	static const struct luaL_Reg meta [] = {
 		{"init", init},
 		{"get", get},
 		{"put", put},
