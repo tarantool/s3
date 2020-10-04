@@ -1,3 +1,3 @@
 [submodule "third_party/libs3"]
 	path = third_party/libs3
-	url = https://github.com/Sulverus/libs3
+	url = https://github.com/tarantool/libs3.git
